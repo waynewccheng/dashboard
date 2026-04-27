@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Test Page</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 8px 16px;
+            flex-shrink: 0;
+        }
+        header img {
+            height: 80px;
+            object-fit: contain;
+        }
+        h1 {
+            text-align: left;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+        #slide-select {
+            padding: 4px 8px;
+            font-size: 0.9rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #patch-input {
+            width: 52px;
+            text-align: center;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 0.5fr repeat(4, 1fr) repeat(2, 0.5fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 8px;
+            padding: 8px;
+            flex: 1;
+            min-height: 0;
+        }
+        .panel {
+            background: white;
+            border-radius: 6px;
+            padding: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 0;
+        }
+        .panel:empty {
+            background: none;
+            box-shadow: none;
+            padding: 0;
+        }
+        .panel { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .panel:has(canvas) { align-items: stretch; justify-content: flex-start; }
+        .panel:nth-child(7n+1) { font-weight: bold; }
+        .panel:nth-child(7n+5),
+        .panel:nth-child(7n+6),
+        .panel:nth-child(7n+7) { font-weight: normal; }
+        .panel:nth-child(7n+5) b,
+        .panel:nth-child(7n+6) b,
+        .panel:nth-child(7n+7) b,
+        .panel:nth-child(7n+5) td,
+        .panel:nth-child(7n+6) td,
+        .panel:nth-child(7n+7) td { font-weight: normal; }
+        .panel table { border-collapse: collapse; margin-top: 6px; font-size: 0.85rem; border: 1px solid #ccc; }
+        .panel table td { padding: 2px 8px; text-align: right; border: 1px solid #ccc; }
+        .panel table td:first-child { text-align: left; font-weight: bold; }
+        canvas { display: block; flex: 1; min-height: 0; width: 100% !important; }
+    </style>
+</head>
+<body>
+    <header>
+        <img id="sample-img" src="" alt="sample">
+        <h1 id="page-title">Spectrum Charts</h1>
+        <select id="slide-select">
+            <option value="iamwsi_fda">AppliedImageWSI/FDA</option>
+            <option value="iam_fda">AppliedImage/FDA</option>
+            <option value="avian_fda">Avian/FDA</option>
+            <option value="sierra_fda">Sierra/FDA</option>
+            <option value="iamwsi_factory">AppliedImageWSI/Factory</option>
+            <option value="iam_factory">AppliedImage/Factory</option>
+            <option value="avian_factory">Avian/Factory</option>
+        </select>
+    </header>
+
+    <div class="grid">
+        <div class="panel"></div>                                <!-- row1: col 1 empty        -->
+        <div class="panel"><canvas id="chartSlide"></canvas></div><!-- row1: col 2 slide map   -->
+        <div class="panel"></div>                                <!-- row1: col 3 empty        -->
+        <div class="panel"><canvas id="chartR1C3"></canvas></div><!-- row1: d50                -->
+        <div class="panel"><canvas id="chartR1C4"></canvas></div><!-- row1: cmf               -->
+        <div class="panel"></div>                                <!-- row1: empty              -->
+        <div class="panel"></div>                                <!-- row1: empty              -->
+        <div class="panel">Patch <input type="number" id="patch-input" value="1" min="1"><br>Coverslip<br>Glass<br>Air</div> <!-- row2: col1 -->
+        <div class="panel"><canvas id="chart1"></canvas></div>  <!-- row2: spec_patch         -->
+        <div class="panel"><canvas id="chart2"></canvas></div>  <!-- row2: trans_patch        -->
+        <div class="panel"><canvas id="chart3"></canvas></div>  <!-- row2: spd_patch          -->
+        <div class="panel" id="color-xyz-panel"></div>          <!-- row2: color_xyz          -->
+        <div class="panel" id="color-lab-panel"></div>          <!-- row2: color_lab          -->
+        <div class="panel" id="color-rgb-panel"></div>          <!-- row2: color_rgb          -->
+        <div class="panel">Coverslip<br>Glass<br>Air</div>       <!-- row3: left col           -->
+        <div class="panel"><canvas id="chart4"></canvas></div>  <!-- row3: spec_coverslip     -->
+        <div class="panel"><canvas id="chart5"></canvas></div>  <!-- row3: trans_coverslip    -->
+        <div class="panel"><canvas id="chart6"></canvas></div>  <!-- row3: spd_coverslip      -->
+        <div class="panel" id="color-xyz0-panel"></div>         <!-- row3: color_xyz0         -->
+        <div class="panel"></div>                                <!-- row3: empty              -->
+        <div class="panel"></div>                                <!-- row3: empty              -->
+        <div class="panel">Air</div>                             <!-- row4: left col           -->
+        <div class="panel"><canvas id="chart7"></canvas></div>  <!-- row4: spec_air           -->
+        <div class="panel"></div>                                <!-- row4: empty              -->
+        <div class="panel"></div>                                <!-- row4: empty              -->
+        <div class="panel"></div>                                <!-- row4: empty              -->
+        <div class="panel"></div>                                <!-- row4: empty              -->
+        <div class="panel"></div>                                <!-- row4: empty              -->
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const chartInstances = {};
+        let slideData  = null;
+        let specYMax   = null;
+        let currentPatch = 1;
+
+        function clearChart(canvasId) {
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+                delete chartInstances[canvasId];
+            }
+        }
+
+        function buildChart(canvasId, json, title, yMax = undefined) {
+            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+            const wl = json.wavelength;
+            const first = wl[0], last = wl[wl.length - 1];
+            let mids = wl.filter(w => w % 100 === 0);
+            if (mids.length > 0 && mids[0] - first < 100) mids = mids.slice(1);
+            if (mids.length > 0 && last - mids[mids.length - 1] < 100) mids = mids.slice(0, -1);
+            const tickSet = new Set([first, ...mids, last]);
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: json.wavelength,
+                    datasets: [{
+                        label: 'Spectrum Amplitude',
+                        data: json.amplitude,
+                        fill: false,
+                        backgroundColor: 'rgba(100, 100, 100, 0.5)',
+                        borderColor: 'rgb(100, 100, 100)',
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: title }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Wavelength (nm)' }, ticks: { callback: (val, i) => tickSet.has(wl[i]) ? wl[i] : null } },
+                        y: { title: { display: false }, beginAtZero: true, max: yMax, ticks: { maxTicksLimit: 4 } }
+                    }
+                }
+            });
+        }
+
+        function buildCMFChart(x, y, z) {
+            if (chartInstances['chartR1C4']) chartInstances['chartR1C4'].destroy();
+            const wl = x.wavelength;
+            const first = wl[0], last = wl[wl.length - 1];
+            let mids = wl.filter(w => w % 100 === 0);
+            if (mids.length > 0 && mids[0] - first < 100) mids = mids.slice(1);
+            if (mids.length > 0 && last - mids[mids.length - 1] < 100) mids = mids.slice(0, -1);
+            const tickSet = new Set([first, ...mids, last]);
+
+            const ctx = document.getElementById('chartR1C4').getContext('2d');
+            chartInstances['chartR1C4'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: wl,
+                    datasets: [
+                        { label: 'x', data: x.amplitude, borderColor: 'red',   backgroundColor: 'rgba(255,0,0,0.3)',   fill: false, borderWidth: 2, pointRadius: 0 },
+                        { label: 'y', data: y.amplitude, borderColor: 'green', backgroundColor: 'rgba(0,128,0,0.3)',   fill: false, borderWidth: 2, pointRadius: 0 },
+                        { label: 'z', data: z.amplitude, borderColor: 'blue',  backgroundColor: 'rgba(0,0,255,0.3)',   fill: false, borderWidth: 2, pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'CMF' }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Wavelength (nm)' }, ticks: { callback: (val, i) => tickSet.has(wl[i]) ? wl[i] : null } },
+                        y: { title: { display: false }, beginAtZero: true, ticks: { maxTicksLimit: 4 } }
+                    }
+                }
+            });
+        }
+
+        function drawSlideMap(selectedPatch) {
+            const canvas = document.getElementById('chartSlide');
+            const ctx = canvas.getContext('2d');
+            const W = canvas.offsetWidth;
+            const H = canvas.offsetHeight;
+            canvas.width  = W;
+            canvas.height = H;
+            ctx.clearRect(0, 0, W, H);
+            if (!W || !H) return;
+            if (!slideData?.XY_slide_size) {
+                ctx.fillStyle = '#aaa';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('no XY data in JSON', W / 2, H / 2);
+                return;
+            }
+
+            const [sW, sH] = slideData.XY_slide_size;
+            const pad = 8;
+            const scale = Math.min((W - 2*pad) / sW, (H - 2*pad) / sH);
+            const ox = (W - sW * scale) / 2;
+            const oy = (H - sH * scale) / 2;
+            const toX = x => ox + x * scale;
+            const toY = y => oy + y * scale;
+
+            // Slide boundary
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(ox, oy, sW * scale, sH * scale);
+
+            // Patches
+            for (let i = 0; i < slideData.XY_patch_boxes.length; i++) {
+                const [x1, y1, x2, y2] = slideData.XY_patch_boxes[i];
+                const rgb = slideData.patches?.[i]?.color_info?.color_rgb;
+                const [r, g, b] = rgb ? rgb.map(Math.round) : [200, 200, 200];
+                const isSelected = (i + 1) === selectedPatch;
+
+                ctx.fillStyle   = `rgb(${r},${g},${b})`;
+                ctx.strokeStyle = isSelected ? 'black' : `rgb(${r},${g},${b})`;
+                ctx.lineWidth   = isSelected ? 2 : 1;
+
+                const bx = toX(x1), by = toY(y1);
+                const bw = (x2 - x1) * scale, bh = (y2 - y1) * scale;
+
+                if (slideData.XY_patch_is_round) {
+                    ctx.beginPath();
+                    ctx.ellipse(bx + bw/2, by + bh/2, bw/2, bh/2, 0, 0, 2*Math.PI);
+                    ctx.fill(); ctx.stroke();
+                } else {
+                    ctx.fillRect(bx, by, bw, bh);
+                    if (isSelected) ctx.strokeRect(bx, by, bw, bh);
+                }
+            }
+
+            // Coverslip marker
+            if (slideData.XY_coverslip) {
+                const ms = 5 * scale;
+                const cx = toX(slideData.XY_coverslip[0]), cy = toY(slideData.XY_coverslip[1]);
+                ctx.fillStyle   = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth   = 1;
+                ctx.fillRect  (cx - ms/2, cy - ms/2, ms, ms);
+                ctx.strokeRect(cx - ms/2, cy - ms/2, ms, ms);
+            }
+        }
+
+        function updateColorPanels(info) {
+            function table(title, rows) {
+                return `<b>${title}</b><table>${rows.map(([k, v]) =>
+                    `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`;
+            }
+            const xyz  = document.getElementById('color-xyz-panel');
+            const xyz0 = document.getElementById('color-xyz0-panel');
+            const lab  = document.getElementById('color-lab-panel');
+            const rgb  = document.getElementById('color-rgb-panel');
+
+            if (info?.color_xyz) {
+                const [X, Y, Z] = info.color_xyz.map(v => v.toFixed(2));
+                xyz.innerHTML = table('CIEXYZ - patch', [['X', X], ['Y', Y], ['Z', Z]]);
+            } else { xyz.innerHTML = '&nbsp;'; }
+
+            if (info?.color_xyz0) {
+                const [X0, Y0, Z0] = info.color_xyz0.map(v => v.toFixed(2));
+                xyz0.innerHTML = table('CIEXYZ - reference white', [['X', X0], ['Y', Y0], ['Z', Z0]]);
+            } else { xyz0.innerHTML = '&nbsp;'; }
+
+            if (info?.color_lab) {
+                const [L, a, b] = info.color_lab.map(v => v.toFixed(2));
+                lab.innerHTML = table('CIELAB', [['L*', L], ['a*', a], ['b*', b]]);
+            } else { lab.innerHTML = '&nbsp;'; }
+
+            if (info?.color_rgb) {
+                const [R, G, B] = info.color_rgb.map(v => Math.round(v));
+                const swatch = `<span style="display:inline-block;width:14px;height:14px;background:rgb(${R},${G},${B});border:1px solid #999;border-radius:2px;flex-shrink:0;"></span>`;
+                rgb.innerHTML = `<div style="display:flex;align-items:center;gap:5px;"><b>sRGB</b>${swatch}</div><table>${[['R',R],['G',G],['B',B]].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>`;
+            } else { rgb.innerHTML = '&nbsp;'; }
+        }
+
+        function clearColorPanels() {
+            ['color-xyz-panel','color-lab-panel','color-rgb-panel','color-xyz0-panel']
+                .forEach(id => { document.getElementById(id).innerHTML = '&nbsp;'; });
+        }
+
+        function renderSharedData() {
+            const d = slideData;
+            document.getElementById('page-title').innerHTML =
+                `${d.basic_info.name}<br>${d.basic_info.sn}<br>${d.basic_info.measurement_data_file}`;
+            document.title = `${d.basic_info.name} — ${d.basic_info.measurement_data_file}`;
+
+            if (d.spec_air) {
+                specYMax = Math.max(...d.spec_air.amplitude);
+                buildChart('chart7', d.spec_air, 'Spectrum (Air)', specYMax);
+            } else { clearChart('chart7'); specYMax = null; }
+
+            if (d.spec_coverslip)  buildChart('chart4', d.spec_coverslip,  'Spectrum (Coverslip)',       specYMax);
+            else clearChart('chart4');
+            if (d.trans_coverslip) buildChart('chart5', d.trans_coverslip, 'Transmittance (Coverslip)', 1);
+            else clearChart('chart5');
+            if (d.spd_coverslip)   buildChart('chart6', d.spd_coverslip,   'SPD (Coverslip)');
+            else clearChart('chart6');
+
+            if (d.d50) buildChart('chartR1C3', d.d50, 'D50', Math.ceil(Math.max(...d.d50.amplitude) / 25) * 25);
+            else clearChart('chartR1C3');
+
+            if (d.cmf_x_bar && d.cmf_y_bar && d.cmf_z_bar) buildCMFChart(d.cmf_x_bar, d.cmf_y_bar, d.cmf_z_bar);
+            else clearChart('chartR1C4');
+
+            drawSlideMap(currentPatch);
+        }
+
+        function renderPatchData(n) {
+            const p = slideData.patches?.[n - 1];
+            if (!p) { clearChart('chart1'); clearChart('chart2'); clearChart('chart3'); clearColorPanels(); return; }
+
+            if (p.spec_patch)  buildChart('chart1', p.spec_patch,  `Spectrum (Patch ${n})`,       specYMax);
+            else clearChart('chart1');
+            if (p.trans_patch) buildChart('chart2', p.trans_patch, `Transmittance (Patch ${n})`, 1);
+            else clearChart('chart2');
+            if (p.spd_patch)   buildChart('chart3', p.spd_patch,   `SPD (Patch ${n})`);
+            else clearChart('chart3');
+
+            if (p.color_info) updateColorPanels(p.color_info);
+            else clearColorPanels();
+
+            drawSlideMap(n);
+        }
+
+        function loadSlide(name) {
+            document.getElementById('sample-img').src = `${name}_sample_image.png`;
+            currentPatch = 1;
+            document.getElementById('patch-input').value = 1;
+            fetch(`${name}.json`)
+                .then(r => r.json())
+                .then(data => {
+                    slideData = data;
+                    document.getElementById('patch-input').max = data.patches.length;
+                    renderSharedData();
+                    renderPatchData(currentPatch);
+                })
+                .catch(err => console.error(`Error loading ${name}.json:`, err));
+        }
+
+        document.getElementById('slide-select').addEventListener('change', e => loadSlide(e.target.value));
+
+        document.getElementById('patch-input').addEventListener('change', e => {
+            currentPatch = Math.max(1, Math.min(slideData.patches.length, parseInt(e.target.value) || 1));
+            e.target.value = currentPatch;
+            renderPatchData(currentPatch);
+        });
+
+        loadSlide(document.getElementById('slide-select').value);
+    </script>
+</body>
+</html>

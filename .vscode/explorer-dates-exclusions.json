@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-27T21:00:39.841Z",
+  "exclusions": [
+    ".git",
+    "logs"
+  ]
+}
