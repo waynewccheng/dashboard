@@ -49,7 +49,7 @@
         .grid {
             position: relative;
             display: grid;
-            grid-template-columns: 0.5fr repeat(4, 1fr) repeat(2, 0.5fr);
+            grid-template-columns: 0.7fr repeat(4, 1fr) repeat(2, 0.5fr);
             grid-template-rows: repeat(4, 1fr);
             gap: 8px;
             padding: 8px;
@@ -137,20 +137,19 @@
 
     <div class="grid" id="main-grid">
         <div class="panel"></div>                                <!-- row1: col 1 empty        -->
-        <div class="panel"><canvas id="chartSlide"></canvas></div><!-- row1: col 2 slide map   -->
-        <div class="panel"></div>                                <!-- row1: col 3 empty        -->
+        <div class="panel" style="grid-column: span 2"><canvas id="chartSlide"></canvas></div><!-- row1: cols 2-3 slide map -->
         <div class="panel"><canvas id="chartR1C3"></canvas></div><!-- row1: d50                -->
         <div class="panel"><canvas id="chartR1C4"></canvas></div><!-- row1: cmf               -->
         <div class="panel"></div>                                <!-- row1: empty              -->
         <div class="panel"></div>                                <!-- row1: empty              -->
-        <div class="panel">Patch <input type="number" id="patch-input" value="1" min="1"><br>Coverslip<br>Glass<br>Air</div> <!-- row2: col1 -->
+        <div class="panel"><label>Patch <input type="number" id="patch-input" value="1" min="1"></label>+<br>Coverslip<br>+<br>Glass<br>+<br>Air</div> <!-- row2: col1 -->
         <div class="panel"><canvas id="chart1"></canvas></div>  <!-- row2: spec_patch         -->
         <div class="panel"><canvas id="chart2"></canvas></div>  <!-- row2: trans_patch        -->
         <div class="panel"><canvas id="chart3"></canvas></div>  <!-- row2: spd_patch          -->
         <div class="panel" id="color-xyz-panel"></div>          <!-- row2: color_xyz          -->
         <div class="panel" id="color-lab-panel"></div>          <!-- row2: color_lab          -->
         <div class="panel" id="color-rgb-panel"></div>          <!-- row2: color_rgb          -->
-        <div class="panel">Coverslip<br>Glass<br>Air</div>       <!-- row3: left col           -->
+        <div class="panel">Coverslip<br>+<br>Glass<br>+<br>Air</div>       <!-- row3: left col           -->
         <div class="panel"><canvas id="chart4"></canvas></div>  <!-- row3: spec_coverslip     -->
         <div class="panel"><canvas id="chart5"></canvas></div>  <!-- row3: trans_coverslip    -->
         <div class="panel"><canvas id="chart6"></canvas></div>  <!-- row3: spd_coverslip      -->
@@ -395,27 +394,44 @@
                 const [x1, y1, x2, y2] = slideData.XY_patch_boxes[i];
                 const rgb = slideData.patches?.[i]?.color_info?.color_rgb;
                 const [r, g, b] = rgb ? rgb.map(Math.round) : [200, 200, 200];
-                const isSelected = (i + 1) === selectedPatch;
-
-                ctx.fillStyle   = `rgb(${r},${g},${b})`;
-                ctx.strokeStyle = isSelected ? 'black' : `rgb(${r},${g},${b})`;
-                ctx.lineWidth   = isSelected ? 2 : 1;
-
                 const bx = toX(x1), by = toY(y1);
                 const bw = (x2 - x1) * scale, bh = (y2 - y1) * scale;
-
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
                 if (slideData.XY_patch_is_round) {
                     ctx.beginPath();
                     ctx.ellipse(bx + bw/2, by + bh/2, bw/2, bh/2, 0, 0, 2*Math.PI);
-                    ctx.fill(); ctx.stroke();
+                    ctx.fill();
                 } else {
                     ctx.fillRect(bx, by, bw, bh);
-                    if (isSelected) ctx.strokeRect(bx, by, bw, bh);
+                }
+            }
+
+            // Selected patch outline (drawn after all fills so nothing paints over it)
+            const sel = slideData.XY_patch_boxes[selectedPatch - 1];
+            if (sel) {
+                const [x1, y1, x2, y2] = sel;
+                const bx = toX(x1), by = toY(y1);
+                const bw = (x2 - x1) * scale, bh = (y2 - y1) * scale;
+                const cx = bx + bw / 2, cy = by + bh / 2;
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth   = 2;
+                if (slideData.basic_info?.measured_by_fda) {
+                    const rx = bw / 8, ry = bh / 8;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - rx, cy - ry); ctx.lineTo(cx + rx, cy + ry);
+                    ctx.moveTo(cx + rx, cy - ry); ctx.lineTo(cx - rx, cy + ry);
+                    ctx.stroke();
+                } else if (slideData.XY_patch_is_round) {
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, bw/2, bh/2, 0, 0, 2*Math.PI);
+                    ctx.stroke();
+                } else {
+                    ctx.strokeRect(bx, by, bw, bh);
                 }
             }
 
             // Coverslip marker
-            if (slideData.XY_coverslip) {
+            if (slideData.XY_coverslip && slideData.trans_coverslip) {
                 const ms = 5 * scale;
                 const cx = toX(slideData.XY_coverslip[0]), cy = toY(slideData.XY_coverslip[1]);
                 ctx.fillStyle   = 'white';
