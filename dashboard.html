@@ -6,9 +6,10 @@
     <title>My Test Page</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body {
-            height: 100vh;
-            overflow: hidden;
+        html { height: 100%; }
+        body {
+            min-height: 100%;
+            overflow-y: auto;
             font-family: sans-serif;
             background: #f5f5f5;
             display: flex;
@@ -46,13 +47,47 @@
             font-size: 0.9rem;
         }
         .grid {
+            position: relative;
             display: grid;
             grid-template-columns: 0.5fr repeat(4, 1fr) repeat(2, 0.5fr);
             grid-template-rows: repeat(4, 1fr);
             gap: 8px;
             padding: 8px;
-            flex: 1;
+            height: calc(100vh - 100px);
+            flex-shrink: 0;
             min-height: 0;
+        }
+        .trans-outer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            height: calc(100vh - 100px);
+            flex-shrink: 0;
+        }
+        #patch-grid {
+            display: grid;
+            gap: 3px;
+            justify-content: center;
+        }
+        .patch-cell {
+            background: white;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .patch-cell canvas {
+            flex: 1;
+            display: block;
+            width: 100% !important;
+            min-height: 0;
+        }
+        #flow-arrows line {
+            stroke: #64B5F6;
+            stroke-width: 40;
+            stroke-opacity: 0;
+            opacity: 0.2;
         }
         .panel {
             background: white;
@@ -100,7 +135,7 @@
         </select>
     </header>
 
-    <div class="grid">
+    <div class="grid" id="main-grid">
         <div class="panel"></div>                                <!-- row1: col 1 empty        -->
         <div class="panel"><canvas id="chartSlide"></canvas></div><!-- row1: col 2 slide map   -->
         <div class="panel"></div>                                <!-- row1: col 3 empty        -->
@@ -129,12 +164,118 @@
         <div class="panel"></div>                                <!-- row4: empty              -->
         <div class="panel"></div>                                <!-- row4: empty              -->
         <div class="panel"></div>                                <!-- row4: empty              -->
+        <svg id="flow-arrows" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:100">
+            <defs>
+                <marker id="ah" markerWidth="32" markerHeight="80" refX="30" refY="40" orient="auto" markerUnits="userSpaceOnUse">
+                    <rect x="0" y="25" width="10" height="30" fill="#64B5F6"/>
+                    <path d="M10,0 L10,80 L30,40 z" fill="#64B5F6"/>
+                </marker>
+            </defs>
+            <line id="arrow-c2-c3" marker-end="url(#ah)"/>
+            <line id="arrow-c3-c4" marker-end="url(#ah)"/>
+            <line id="arrow-c4-c5" marker-end="url(#ah)"/>
+            <line id="arrow-c5-c6" marker-end="url(#ah)"/>
+            <line id="arrow-c6-c7" marker-end="url(#ah)"/>
+            <line id="arrow-r1r2c4" marker-end="url(#ah)"/>
+            <line id="arrow-r1r2c5"   marker-end="url(#ah)"/>
+            <line id="arrow-r3c5-r2c6" marker-end="url(#ah)"/>
+            <line id="arrow-r3c2-c3" marker-end="url(#ah)"/>
+            <line id="arrow-r3c3-c4" marker-end="url(#ah)"/>
+            <line id="arrow-r3c4-c5" marker-end="url(#ah)"/>
+        </svg>
+    </div>
+
+    <div class="trans-outer">
+        <div id="patch-grid"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const chartInstances = {};
         let slideData  = null;
+
+        const plotAreaBg = {
+            id: 'plotAreaBg',
+            beforeDraw(chart) {
+                const color = chart.options.plugins.plotAreaBg?.color;
+                if (!color) return;
+                const { ctx, chartArea: { left, top, width, height } } = chart;
+                ctx.save();
+                ctx.fillStyle = color;
+                ctx.fillRect(left, top, width, height);
+                ctx.restore();
+            }
+        };
+        Chart.register(plotAreaBg);
+
+        function computeNCols(data) {
+            const boxes = data.XY_patch_boxes;
+            if (boxes && boxes.length > 0) {
+                const y0  = boxes[0][1];
+                const tol = (boxes[0][3] - boxes[0][1]) * 0.5;
+                return boxes.filter(b => Math.abs(b[1] - y0) < tol).length;
+            }
+            return 6;
+        }
+
+        function buildGrid(data) {
+            const patches = data.patches || [];
+            const nCols   = computeNCols(data);
+            const nRows   = Math.ceil(patches.length / nCols);
+            const gap  = 3;
+            const pad  = 16;
+            const container = document.querySelector('.trans-outer');
+            const ow   = container.offsetWidth  - pad;
+            const oh   = container.offsetHeight - pad;
+            const cs   = Math.max(40, Math.floor(Math.min(
+                (ow - (nCols - 1) * gap) / nCols,
+                (oh - (nRows - 1) * gap) / nRows
+            )));
+            Object.keys(chartInstances)
+                .filter(k => k.startsWith('ptrans_'))
+                .forEach(k => { chartInstances[k].destroy(); delete chartInstances[k]; });
+            const grid = document.getElementById('patch-grid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${nCols}, ${cs}px)`;
+            grid.style.gridAutoRows        = `${cs}px`;
+
+            patches.forEach((p, i) => {
+                const n  = i + 1;
+                const id = `ptrans_${n}`;
+                const cell   = document.createElement('div');
+                cell.className = 'patch-cell';
+                const canvas = document.createElement('canvas');
+                canvas.id = id;
+                cell.appendChild(canvas);
+                grid.appendChild(cell);
+                if (!p.trans_patch) return;
+                const wl = p.trans_patch.wavelength;
+                const rgb = p.color_info?.color_rgb;
+                const [r, g, b] = rgb ? rgb.map(Math.round) : [255, 255, 255];
+                const ctx2 = canvas.getContext('2d');
+                chartInstances[id] = new Chart(ctx2, {
+                    type: 'line',
+                    data: {
+                        labels: wl,
+                        datasets: [{ data: p.trans_patch.amplitude, borderColor: 'magenta', borderWidth: 1.5, fill: false, pointRadius: 0 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: p.patch_marker ?? String(n).padStart(2, '0'), font: { weight: 'bold', size: 11 }, padding: { top: 2, bottom: 1 } },
+                            plotAreaBg: { color: `rgb(${r},${g},${b})` }
+                        },
+                        scales: {
+                            x: { ticks: { display: false }, grid: { display: false } },
+                            y: { min: 0, max: 1, ticks: { display: false }, grid: { display: false } }
+                        }
+                    }
+                });
+            });
+        }
         let specYMax   = null;
         let currentPatch = 1;
 
@@ -377,10 +518,76 @@
                     document.getElementById('patch-input').max = data.patches.length;
                     renderSharedData();
                     renderPatchData(currentPatch);
+                    buildGrid(data);
+                    requestAnimationFrame(drawArrows);
                 })
                 .catch(err => console.error(`Error loading ${name}.json:`, err));
         }
 
+        function drawArrows() {
+            const gridRect = document.getElementById('main-grid').getBoundingClientRect();
+            function hasContent(id) {
+                const el = document.getElementById(id);
+                if (!el) return false;
+                if (el.tagName === 'CANVAS') return !!chartInstances[id];
+                const t = el.innerHTML.trim();
+                return t !== '' && t !== '&nbsp;';
+            }
+            function panelRect(id) {
+                const el = document.getElementById(id);
+                if (!el) return null;
+                const p = el.classList.contains('panel') ? el : el.parentElement;
+                return p.getBoundingClientRect();
+            }
+            function endpoints(p1, p2, pct, fromEdge, toEdge) {
+                const cx1 = p1.left + p1.width  / 2, cy1 = p1.top + p1.height / 2;
+                const cx2 = p2.left + p2.width  / 2, cy2 = p2.top + p2.height / 2;
+                let x1, y1, x2, y2;
+                if (fromEdge && toEdge) {
+                    x1 = fromEdge === 'r' ? p1.right  - p1.width  * pct : fromEdge === 'l' ? p1.left   + p1.width  * pct : cx1;
+                    y1 = fromEdge === 'b' ? p1.bottom - p1.height * pct : fromEdge === 't' ? p1.top    + p1.height * pct : cy1;
+                    x2 = toEdge   === 'r' ? p2.right  - p2.width  * pct : toEdge   === 'l' ? p2.left   + p2.width  * pct : cx2;
+                    y2 = toEdge   === 'b' ? p2.bottom - p2.height * pct : toEdge   === 't' ? p2.top    + p2.height * pct : cy2;
+                } else if (Math.abs(cx2 - cx1) >= Math.abs(cy2 - cy1)) {
+                    x1 = cx2 > cx1 ? p1.right - p1.width  * pct : p1.left   + p1.width  * pct;
+                    x2 = cx2 > cx1 ? p2.left  + p2.width  * pct : p2.right  - p2.width  * pct;
+                    y1 = cy1; y2 = cy2;
+                } else {
+                    y1 = cy2 > cy1 ? p1.bottom - p1.height * pct : p1.top    + p1.height * pct;
+                    y2 = cy2 > cy1 ? p2.top    + p2.height * pct : p2.bottom - p2.height * pct;
+                    x1 = cx1; x2 = cx2;
+                }
+                return [x1 - gridRect.left, y1 - gridRect.top,
+                        x2 - gridRect.left, y2 - gridRect.top];
+            }
+            [
+                ['arrow-c2-c3',    'chart1',           'chart2'          ],
+                ['arrow-c3-c4',    'chart2',           'chart3'          ],
+                ['arrow-c4-c5',    'chart3',           'color-xyz-panel' ],
+                ['arrow-c5-c6',    'color-xyz-panel',  'color-lab-panel' ],
+                ['arrow-c6-c7',    'color-lab-panel',  'color-rgb-panel' ],
+                ['arrow-r3c2-c3',  'chart4',           'chart5'          ],
+                ['arrow-r3c3-c4',  'chart5',           'chart6'          ],
+                ['arrow-r3c4-c5',  'chart6',           'color-xyz0-panel'],
+                ['arrow-r1r2c4',   'chartR1C3',        'chart3'          ],
+                ['arrow-r1r2c5',   'chartR1C4',        'color-xyz-panel' ],
+                ['arrow-r3c5-r2c6','color-xyz0-panel', 'color-lab-panel', 'r', 'b'],
+            ].forEach(([lineId, fromId, toId, fromEdge, toEdge]) => {
+                const line = document.getElementById(lineId);
+                if (!hasContent(fromId) || !hasContent(toId)) {
+                    line.style.display = 'none';
+                    return;
+                }
+                line.style.display = '';
+                const p1 = panelRect(fromId), p2 = panelRect(toId);
+                if (!p1 || !p2) return;
+                const [x1, y1, x2, y2] = endpoints(p1, p2, 0.05, fromEdge, toEdge);
+                line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+            });
+        }
+
+        window.addEventListener('resize', () => { if (slideData) buildGrid(slideData); drawArrows(); });
         document.getElementById('slide-select').addEventListener('change', e => loadSlide(e.target.value));
 
         document.getElementById('patch-input').addEventListener('change', e => {

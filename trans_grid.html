@@ -7,6 +7,8 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
+            height: 100vh;
+            overflow: hidden;
             font-family: sans-serif;
             background: #f5f5f5;
             display: flex;
@@ -14,8 +16,9 @@
         }
         header {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 16px;
+            gap: 4px;
             padding: 6px 16px;
             flex-shrink: 0;
         }
@@ -26,23 +29,12 @@
             border-radius: 4px;
         }
         .outer {
-            display: flex;
-            align-items: flex-start;
-            padding: 0 8px 8px 4px;
-        }
-        .y-label {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
-            text-align: center;
-            font-size: 0.85rem;
-            padding: 0 2px;
-            flex-shrink: 0;
-        }
-        .inner {
             flex: 1;
+            min-height: 0;
             display: flex;
-            flex-direction: column;
-            min-width: 0;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
         }
         #patch-grid {
             display: grid;
@@ -53,7 +45,6 @@
             background: white;
             border-radius: 3px;
             overflow: hidden;
-            aspect-ratio: 1;
             display: flex;
             flex-direction: column;
         }
@@ -63,16 +54,12 @@
             width: 100% !important;
             min-height: 0;
         }
-        .x-label {
-            text-align: center;
-            font-size: 0.85rem;
-            padding: 3px 0;
-            flex-shrink: 0;
-        }
+
     </style>
 </head>
 <body>
     <header>
+        <h1 id="page-title" style="font-size:1.2rem;line-height:1.6;text-align:center;"></h1>
         <select id="slide-select">
             <option value="iamwsi_fda">AppliedImageWSI/FDA</option>
             <option value="iam_fda">AppliedImage/FDA</option>
@@ -82,15 +69,10 @@
             <option value="iam_factory">AppliedImage/Factory</option>
             <option value="avian_factory">Avian/Factory</option>
         </select>
-        <h1 id="page-title" style="font-size:1.2rem;line-height:1.6;text-align:left;"></h1>
     </header>
 
     <div class="outer">
-        <div class="y-label">Transmittance</div>
-        <div class="inner">
-            <div id="patch-grid"></div>
-            <div class="x-label">Wavelength (nm)</div>
-        </div>
+        <div id="patch-grid"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -125,9 +107,19 @@
         function buildGrid(data) {
             const patches = data.patches || [];
             const nCols   = computeNCols(data, patches.length);
+            const nRows   = Math.ceil(patches.length / nCols);
+            const gap  = 3;
+            const pad  = 16;
+            const ow   = window.innerWidth  - pad;
+            const oh   = window.innerHeight - document.querySelector('header').offsetHeight - pad;
+            const cs   = Math.max(40, Math.floor(Math.min(
+                (ow - (nCols - 1) * gap) / nCols,
+                (oh - (nRows - 1) * gap) / nRows
+            )));
             const grid = document.getElementById('patch-grid');
             grid.innerHTML = '';
-            grid.style.gridTemplateColumns = `repeat(${nCols}, minmax(0, 150px))`;
+            grid.style.gridTemplateColumns = `repeat(${nCols}, ${cs}px)`;
+            grid.style.gridAutoRows        = `${cs}px`;
             Object.values(chartInstances).forEach(c => c.destroy());
             Object.keys(chartInstances).forEach(k => delete chartInstances[k]);
 
@@ -175,7 +167,7 @@
                             legend: { display: false },
                             title: {
                                 display: true,
-                                text: String(n).padStart(2, '0'),
+                                text: p.patch_marker ?? String(n).padStart(2, '0'),
                                 font: { weight: 'bold', size: 11 },
                                 padding: { top: 2, bottom: 1 }
                             },
@@ -197,13 +189,21 @@
                     document.title = `${data.basic_info.name} — Transmittance Grid`;
                     document.getElementById('page-title').innerHTML =
                         `${data.basic_info.name}<br>${data.basic_info.sn}<br>${data.basic_info.measurement_data_file}`;
+                    window._slideData = data;
                     buildGrid(data);
                 })
                 .catch(err => console.error(`Error loading ${name}.json:`, err));
         }
 
-        document.getElementById('slide-select').addEventListener('change', e => loadSlide(e.target.value));
-        loadSlide(document.getElementById('slide-select').value);
+        let currentSlideName = document.getElementById('slide-select').value;
+        document.getElementById('slide-select').addEventListener('change', e => {
+            currentSlideName = e.target.value;
+            loadSlide(currentSlideName);
+        });
+        window.addEventListener('resize', () => {
+            if (window._slideData) buildGrid(window._slideData);
+        });
+        loadSlide(currentSlideName);
     </script>
 </body>
 </html>
