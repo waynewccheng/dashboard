@@ -83,11 +83,16 @@
             width: 100% !important;
             min-height: 0;
         }
-        #flow-arrows line {
+        #flow-arrows line, #flow-arrows polyline {
             stroke: #64B5F6;
-            stroke-width: 40;
-            stroke-opacity: 0;
+            stroke-width: 3;
             opacity: 0.2;
+            fill: none;
+        }
+        #flow-arrows #arrow-r4c5-r2c6 {
+            stroke: red;
+            stroke-dasharray: 6 4;
+            opacity: 0.5;
         }
         .panel {
             background: white;
@@ -118,6 +123,7 @@
         .panel table td { padding: 2px 8px; text-align: right; border: 1px solid #ccc; }
         .panel table td:first-child { text-align: left; font-weight: bold; }
         canvas { display: block; flex: 1; min-height: 0; width: 100% !important; }
+        .chart-label { font-size: 0.85rem; text-align: center; flex-shrink: 0; padding: 2px 0; }
     </style>
 </head>
 <body>
@@ -138,8 +144,8 @@
     <div class="grid" id="main-grid">
         <div class="panel"></div>                                <!-- row1: col 1 empty        -->
         <div class="panel" style="grid-column: span 2"><canvas id="chartSlide"></canvas></div><!-- row1: cols 2-3 slide map -->
-        <div class="panel"><canvas id="chartR1C3"></canvas></div><!-- row1: d50                -->
-        <div class="panel"><canvas id="chartR1C4"></canvas></div><!-- row1: cmf               -->
+        <div class="panel"><div class="chart-label">CIE D50</div><canvas id="chartR1C3"></canvas></div><!-- row1: d50 -->
+        <div class="panel"><div class="chart-label">CMF 2deg</div><canvas id="chartR1C4"></canvas></div><!-- row1: cmf -->
         <div class="panel"></div>                                <!-- row1: empty              -->
         <div class="panel"></div>                                <!-- row1: empty              -->
         <div class="panel"><label>Patch <input type="number" id="patch-input" value="1" min="1"></label>+<br>Coverslip<br>+<br>Glass<br>+<br>Air</div> <!-- row2: col1 -->
@@ -154,20 +160,24 @@
         <div class="panel"><canvas id="chart5"></canvas></div>  <!-- row3: trans_coverslip    -->
         <div class="panel"><canvas id="chart6"></canvas></div>  <!-- row3: spd_coverslip      -->
         <div class="panel" id="color-xyz0-panel"></div>         <!-- row3: color_xyz0         -->
-        <div class="panel"></div>                                <!-- row3: empty              -->
+        <div class="panel" id="r3c6-panel"></div>               <!-- row3: empty              -->
         <div class="panel"></div>                                <!-- row3: empty              -->
         <div class="panel">Air</div>                             <!-- row4: left col           -->
         <div class="panel"><canvas id="chart7"></canvas></div>  <!-- row4: spec_air           -->
-        <div class="panel"></div>                                <!-- row4: empty              -->
-        <div class="panel"></div>                                <!-- row4: empty              -->
-        <div class="panel"></div>                                <!-- row4: empty              -->
-        <div class="panel"></div>                                <!-- row4: empty              -->
-        <div class="panel"></div>                                <!-- row4: empty              -->
+        <div class="panel" id="r4c3-panel"></div>               <!-- row4: col3 empty         -->
+        <div class="panel"></div>                                <!-- row4: col4 empty         -->
+        <div class="panel" id="r4c5-panel"></div>               <!-- row4: col5 empty         -->
+        <div class="panel" id="r4c6-panel"></div>               <!-- row4: col6 empty         -->
+        <div class="panel"></div>                                <!-- row4: col7 empty         -->
         <svg id="flow-arrows" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:100">
             <defs>
-                <marker id="ah" markerWidth="32" markerHeight="80" refX="30" refY="40" orient="auto" markerUnits="userSpaceOnUse">
-                    <rect x="0" y="25" width="10" height="30" fill="#64B5F6"/>
-                    <path d="M10,0 L10,80 L30,40 z" fill="#64B5F6"/>
+                <marker id="ah" markerWidth="14" markerHeight="12" refX="13" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                    <rect x="0" y="4.5" width="6" height="3" fill="#64B5F6"/>
+                    <path d="M6,0 L6,12 L13,6 z" fill="#64B5F6"/>
+                </marker>
+                <marker id="ah-red" markerWidth="14" markerHeight="12" refX="13" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                    <rect x="0" y="4.5" width="6" height="3" fill="red"/>
+                    <path d="M6,0 L6,12 L13,6 z" fill="red"/>
                 </marker>
             </defs>
             <line id="arrow-c2-c3" marker-end="url(#ah)"/>
@@ -177,10 +187,16 @@
             <line id="arrow-c6-c7" marker-end="url(#ah)"/>
             <line id="arrow-r1r2c4" marker-end="url(#ah)"/>
             <line id="arrow-r1r2c5"   marker-end="url(#ah)"/>
-            <line id="arrow-r3c5-r2c6" marker-end="url(#ah)"/>
+            <polyline id="arrow-r3c5-r2c6" marker-end="url(#ah)" fill="none"/>
+            <polyline id="arrow-r4c5-r3c6" marker-end="url(#ah)" fill="none"/>
+            <polyline id="arrow-r4c5-r2c6" marker-end="url(#ah-red)"/>
+            <polyline id="arrow-r4c2-r2c3" marker-end="url(#ah)" fill="none"/>
+            <polyline id="arrow-r4c2-r3c3" marker-end="url(#ah)" fill="none"/>
             <line id="arrow-r3c2-c3" marker-end="url(#ah)"/>
             <line id="arrow-r3c3-c4" marker-end="url(#ah)"/>
             <line id="arrow-r3c4-c5" marker-end="url(#ah)"/>
+            <line id="arrow-r1r3c4" marker-end="url(#ah)"/>
+            <line id="arrow-r1r3c5" marker-end="url(#ah)"/>
         </svg>
     </div>
 
@@ -314,7 +330,7 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
-                        title: { display: true, text: title }
+                        title: { display: !!title, text: title || '' }
                     },
                     scales: {
                         x: { title: { display: true, text: 'Wavelength (nm)' }, ticks: { callback: (val, i) => tickSet.has(wl[i]) ? wl[i] : null } },
@@ -349,7 +365,7 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
-                        title: { display: true, text: 'CMF' }
+                        title: { display: false }
                     },
                     scales: {
                         x: { title: { display: true, text: 'Wavelength (nm)' }, ticks: { callback: (val, i) => tickSet.has(wl[i]) ? wl[i] : null } },
@@ -497,11 +513,14 @@
             if (d.spd_coverslip)   buildChart('chart6', d.spd_coverslip,   'SPD (Coverslip)');
             else clearChart('chart6');
 
-            if (d.d50) buildChart('chartR1C3', d.d50, 'D50', Math.ceil(Math.max(...d.d50.amplitude) / 25) * 25);
+            if (d.d50) buildChart('chartR1C3', d.d50, null, Math.ceil(Math.max(...d.d50.amplitude) / 25) * 25);
             else clearChart('chartR1C3');
 
             if (d.cmf_x_bar && d.cmf_y_bar && d.cmf_z_bar) buildCMFChart(d.cmf_x_bar, d.cmf_y_bar, d.cmf_z_bar);
             else clearChart('chartR1C4');
+
+            document.getElementById('r4c5-panel').innerHTML =
+                d.basic_info?.reference_white_choice === 'Illuminant' ? '<b>CIEXYZ - Illuminant</b>' : '';
 
             drawSlideMap(currentPatch);
         }
@@ -555,7 +574,7 @@
                 const p = el.classList.contains('panel') ? el : el.parentElement;
                 return p.getBoundingClientRect();
             }
-            function endpoints(p1, p2, pct, fromEdge, toEdge) {
+            function endpoints(p1, p2, pct, fromEdge, toEdge, xFrac, srcChartId) {
                 const cx1 = p1.left + p1.width  / 2, cy1 = p1.top + p1.height / 2;
                 const cx2 = p2.left + p2.width  / 2, cy2 = p2.top + p2.height / 2;
                 let x1, y1, x2, y2;
@@ -571,7 +590,21 @@
                 } else {
                     y1 = cy2 > cy1 ? p1.bottom - p1.height * pct : p1.top    + p1.height * pct;
                     y2 = cy2 > cy1 ? p2.top    + p2.height * pct : p2.bottom - p2.height * pct;
-                    x1 = cx1; x2 = cx2;
+                    if (xFrac != null) {
+                        const chart = srcChartId ? chartInstances[srcChartId] : null;
+                        const ca = chart?.chartArea;
+                        let x;
+                        if (ca) {
+                            const cr = chart.canvas.getBoundingClientRect();
+                            const caMid = cr.left + (ca.left + ca.right) / 2;
+                            x = caMid + xFrac * (ca.right - ca.left);
+                        } else {
+                            x = cx1 + xFrac * p1.width;
+                        }
+                        x1 = x; x2 = x;
+                    } else {
+                        x1 = cx1; x2 = cx2;
+                    }
                 }
                 return [x1 - gridRect.left, y1 - gridRect.top,
                         x2 - gridRect.left, y2 - gridRect.top];
@@ -585,22 +618,48 @@
                 ['arrow-r3c2-c3',  'chart4',           'chart5'          ],
                 ['arrow-r3c3-c4',  'chart5',           'chart6'          ],
                 ['arrow-r3c4-c5',  'chart6',           'color-xyz0-panel'],
-                ['arrow-r1r2c4',   'chartR1C3',        'chart3'          ],
-                ['arrow-r1r2c5',   'chartR1C4',        'color-xyz-panel' ],
-                ['arrow-r3c5-r2c6','color-xyz0-panel', 'color-lab-panel', 'r', 'b'],
-            ].forEach(([lineId, fromId, toId, fromEdge, toEdge]) => {
+                ['arrow-r1r2c4',   'chartR1C3',        'chart3',          null, null, -1/6, 'chartR1C3'],
+                ['arrow-r1r2c5',   'chartR1C4',        'color-xyz-panel',  null, null, -1/6, 'chartR1C4'],
+                ['arrow-r1r3c5',   'chartR1C4',        'color-xyz0-panel', null, null,  1/6, 'chartR1C4'],
+                ['arrow-r3c5-r2c6','color-xyz0-panel', 'color-lab-panel', null, null, null, null, 'r3c6-panel'],
+                ['arrow-r4c5-r3c6','r4c5-panel',       'r3c6-panel',       null, null, null, null, 'r4c6-panel'],
+                ['arrow-r4c5-r2c6','r4c5-panel',       'color-lab-panel',  null, null, null, null, 'r4c6-panel', 0.25],
+                ['arrow-r1r3c4',   'chartR1C3',        'chart6',          null, null,  1/6, 'chartR1C3'],
+                ['arrow-r4c2-r2c3','chart7',           'chart2',           null, null, null, null, 'r4c3-panel', -1/6, -1/6],
+                ['arrow-r4c2-r3c3','chart7',           'chart5',           null, null, null, null, 'r4c3-panel',  1/6,  1/6],
+            ].forEach(([lineId, fromId, toId, fromEdge, toEdge, xFrac, srcChartId, elbowId, elbowXShift, startYShift]) => {
                 const line = document.getElementById(lineId);
-                if (!hasContent(fromId) || !hasContent(toId)) {
+                const alwaysOn = new Set([
+                    'arrow-c3-c4', 'arrow-r1r2c4',   // → r2c4
+                    'arrow-r3c3-c4', 'arrow-r1r3c4', // → r3c4
+                    'arrow-c4-c5', 'arrow-r1r2c5',   // → r2c5
+                    'arrow-r3c4-c5',                 // r3c4 → r3c5
+                    'arrow-r3c5-r2c6',               // r3c5 → r3c6
+                ]);
+                if (!alwaysOn.has(lineId) && (!hasContent(fromId) || !hasContent(toId))) {
                     line.style.display = 'none';
                     return;
                 }
                 line.style.display = '';
                 const p1 = panelRect(fromId), p2 = panelRect(toId);
                 if (!p1 || !p2) return;
-                const [x1, y1, x2, y2] = endpoints(p1, p2, 0.05, fromEdge, toEdge);
+                if (elbowId) {
+                    const pe = panelRect(elbowId);
+                    if (!pe) return;
+                    const ex  = (pe.left + pe.right) / 2 - gridRect.left + (elbowXShift ?? 0) * pe.width;
+                    const y1e = (p1.top  + p1.bottom) / 2 - gridRect.top  + (startYShift  ?? 0) * p1.height;
+                    const x1e = p1.right - p1.width * 0.05 - gridRect.left;
+                    const y3  = p2.bottom - p2.height * 0.05 - gridRect.top;
+                    line.setAttribute('points', `${x1e},${y1e} ${ex},${y1e} ${ex},${y3}`);
+                    return;
+                }
+                const [x1, y1, x2, y2] = endpoints(p1, p2, 0.05, fromEdge, toEdge, xFrac, srcChartId);
                 line.setAttribute('x1', x1); line.setAttribute('y1', y1);
                 line.setAttribute('x2', x2); line.setAttribute('y2', y2);
             });
+
+            const isIlluminant = slideData?.basic_info?.reference_white_choice === 'Illuminant';
+            document.getElementById('arrow-r4c5-r2c6').style.display = isIlluminant ? '' : 'none';
         }
 
         window.addEventListener('resize', () => { if (slideData) buildGrid(slideData); drawArrows(); });
